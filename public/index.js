@@ -2,9 +2,7 @@ let transactions = [];
 let myChart;
 
 fetch("/api/transaction")
-  .then(response => {
-    return response.json();
-  })
+  .then(response => response.json())
   .then(data => {
     // save db data on global variable
     transactions = data;
@@ -16,25 +14,23 @@ fetch("/api/transaction")
 
 function populateTotal() {
   // reduce transaction amounts to a single total value
-  let total = transactions.reduce((total, t) => {
+  const total = transactions.reduce((total, t) => {
     return total + parseInt(t.value);
   }, 0);
 
-  let totalEl = document.querySelector("#total");
-  totalEl.textContent = total;
+  document.querySelector("#total").textContent = total;
 }
 
 function populateTable() {
-  let tbody = document.querySelector("#tbody");
+  const tbody = document.querySelector("#tbody");
   tbody.innerHTML = "";
 
-  transactions.forEach(transaction => {
+  transactions.forEach( ({name,value}) => {
     // create and populate a table row
     let tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${transaction.name}</td>
-      <td>${transaction.value}</td>
-    `;
+    tr.innerHTML = 
+    `<td>${name}</td>
+    <td>${value}</td>`
 
     tbody.appendChild(tr);
   });
@@ -46,23 +42,20 @@ function populateChart() {
   let sum = 0;
 
   // create date labels for chart
-  let labels = reversed.map(t => {
-    let date = new Date(t.date);
+  const labels = reversed.map( t => {
+    const date = new Date(t.date);
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   });
 
   // create incremental values for chart
-  let data = reversed.map(t => {
-    sum += parseInt(t.value);
-    return sum;
+  const data = reversed.map( ({value}) => {
+    return sum += parseInt(value);
   });
 
   // remove old chart if it exists
-  if (myChart) {
-    myChart.destroy();
-  }
+  if (myChart) myChart.destroy();
 
-  let ctx = document.getElementById("myChart").getContext("2d");
+  const ctx = document.getElementById("myChart").getContext("2d");
 
   myChart = new Chart(ctx, {
     type: 'line',
@@ -79,18 +72,14 @@ function populateChart() {
 }
 
 function sendTransaction(isAdding) {
-  let nameEl = document.querySelector("#t-name");
-  let amountEl = document.querySelector("#t-amount");
-  let errorEl = document.querySelector(".form .error");
+  const nameEl = document.querySelector("#t-name");
+  const amountEl = document.querySelector("#t-amount");
+  const errorEl = document.querySelector(".form .error");
 
   // validate form
-  if (nameEl.value === "" || amountEl.value === "") {
-    errorEl.textContent = "Missing Information";
-    return;
-  }
-  else {
-    errorEl.textContent = "";
-  }
+  const condition = (nameEl.value === "" || amountEl.value === "")
+  errorEl.textContent = condition? "Missing Information" : ""
+  if (condition) return
 
   // create record
   let transaction = {
@@ -100,18 +89,19 @@ function sendTransaction(isAdding) {
   };
 
   // if subtracting funds, convert amount to negative number
-  if (!isAdding) {
-    transaction.value *= -1;
-  }
+  transaction.value *= (isAdding) - (!isAdding)
+  
 
   // add to beginning of current array of data
-  transactions.unshift(transaction);
+  transactions = [transaction,...transactions]
 
   // re-run logic to populate ui with new record
   populateChart();
   populateTable();
   populateTotal();
   
+
+  console.log(transaction)
   // also send to server
   fetch("/api/transaction", {
     method: "POST",
@@ -121,18 +111,11 @@ function sendTransaction(isAdding) {
       "Content-Type": "application/json"
     }
   })
-  .then(response => {    
-    return response.json();
-  })
-  .then(data => {
-    if (data.errors) {
-      errorEl.textContent = "Missing Information";
-    }
-    else {
-      // clear form
-      nameEl.value = "";
-      amountEl.value = "";
-    }
+  .then(response => response.json())
+  .then(({errors}) => {
+    errorEl.textContent = errors? "Missing Information" : "";
+    nameEl.value = errors? null : "";
+    amountEl.value = errors? null : "";
   })
   .catch(err => {
     // fetch failed, so save in indexed db
@@ -144,10 +127,10 @@ function sendTransaction(isAdding) {
   });
 }
 
-document.querySelector("#add-btn").onclick = function() {
+document.querySelector("#add-btn").onclick = () => {
   sendTransaction(true);
 };
 
-document.querySelector("#sub-btn").onclick = function() {
+document.querySelector("#sub-btn").onclick = () => {
   sendTransaction(false);
 };
