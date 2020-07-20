@@ -3,9 +3,13 @@ let myChart;
 
 fetch("/api/transaction")
   .then(response => response.json())
-  .then(data => {
-    // save db data on global variable
-    transactions = data;
+  .then(async data => {
+
+    const loading = await loadRecord()
+
+    transactions = (loading.length === 0)? data
+                 : (!navigator.onLine)? [...loading, ...data]
+                 : (() => {sendBulkTransaction(loading); return data})()
 
     populateTotal();
     populateTable();
@@ -14,8 +18,8 @@ fetch("/api/transaction")
 
 function populateTotal() {
   // reduce transaction amounts to a single total value
-  const total = transactions.reduce((total, t) => {
-    return total + parseInt(t.value);
+  const total = transactions.reduce((total, {value}) => {
+    return total + parseInt(value);
   }, 0);
 
   document.querySelector("#total").textContent = total;
@@ -101,7 +105,6 @@ function sendTransaction(isAdding) {
   populateTotal();
   
 
-  console.log(transaction)
   // also send to server
   fetch("/api/transaction", {
     method: "POST",
@@ -118,6 +121,7 @@ function sendTransaction(isAdding) {
     amountEl.value = errors? null : "";
   })
   .catch(err => {
+    console.log(err)
     // fetch failed, so save in indexed db
     saveRecord(transaction);
 
@@ -125,6 +129,18 @@ function sendTransaction(isAdding) {
     nameEl.value = "";
     amountEl.value = "";
   });
+}
+
+// Send all data from IndexedDb to server
+function sendBulkTransaction(loadingRecord){
+  fetch("/api/transaction/bulk", {
+    method: "POST",
+    body: JSON.stringify(loadingRecord),
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json"
+    }
+  }).then(() => deleteRecord())
 }
 
 document.querySelector("#add-btn").onclick = () => {

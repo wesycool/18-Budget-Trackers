@@ -1,53 +1,65 @@
-function checkForIndexedDb() {
-    if (!window.indexedDB) {
-      console.log("Your browser doesn't support a stable version of IndexedDB.");
-      return false;
-    }
-    return true;
-}
-
+// Save Data to IndexedDb when Offline
 function saveRecord(object) {
-    console.log('testing')
     return new Promise((resolve, reject) => {
-      const request = window.indexedDB.open("budget", 1);
-      let db, tx, store;
-    
-      console.log(request)
+        const request = window.indexedDB.open("budget", 1);
 
-      request.onupgradeneeded = function(e) {
-        db = request.result;
-        console.log(db)
-        db.createObjectStore("pending", { autoIncrement: true});
-      };
-
-      request.onerror = function(e) {
-        console.log("There was an error");
-      };
-  
-      request.onsuccess = function(e) {
-        db = request.result;
-        tx = db.transaction(["pending"], "readwrite");
-        store = tx.objectStore("pending");
-  
-        db.onerror = function(e) {
-          console.log("error");
-        };
-        if (method === "put") {
-          store.put(object);
-        } else if (method === "get") {
-          const all = store.getAll();
-          all.onsuccess = function() {
-            resolve(all.result);
-          };
-        } else if (method === "delete") {
-          store.delete(object._id);
+        request.onupgradeneeded = ({target:{result}}) => {
+            result.createObjectStore("pending", {autoIncrement: true});
         }
-        tx.oncomplete = function() {
-          db.close();
-        };
-      };
-    });
+
+        request.onerror = () => {console.log("There was an error")}
+    
+        request.onsuccess = ({target:{result}}) => {
+            let tx = result.transaction(["pending"], "readwrite")
+            let store = tx.objectStore("pending")
+    
+            result.onerror = () => {console.log("error")}
+            tx.oncomplete = () => {result.close()}
+            store.put(object)
+        }
+    })
 }
 
 
-  
+// Load Data from IndexedDb
+function loadRecord() {
+    return new Promise((resolve, reject) => {
+        const request = window.indexedDB.open("budget", 1)
+
+        request.onupgradeneeded = ({target:{result}}) => {
+            result.createObjectStore("pending", {autoIncrement: true});
+        }
+    
+        request.onerror = () => {console.log("There was an error")}
+    
+        request.onsuccess = ({target:{result}}) =>  {
+            let tx = result.transaction(["pending"], "readwrite")
+            let load = tx.objectStore("pending").getAll()
+
+            tx.oncomplete = () => {result.close()}
+            load.onsuccess = ({target:{result}}) => {resolve(result)}
+        }
+    })
+}
+
+// Delete Data from IndexedDb
+function deleteRecord() {
+    return new Promise((resolve, reject) => {
+        const request = window.indexedDB.open("budget", 1)
+
+        request.onupgradeneeded = ({target:{result}}) => {
+            result.createObjectStore("pending", {autoIncrement: true});
+        }
+    
+        request.onerror = () => {console.log("There was an error")}
+    
+        request.onsuccess = ({target:{result}}) =>  {
+            let tx = result.transaction(["pending"], "readwrite")
+            let store = tx.objectStore("pending")
+    
+            result.onerror = () => {console.log("error")}
+            tx.oncomplete = () => {result.close()}
+            store.clear()
+        }
+    })
+}
