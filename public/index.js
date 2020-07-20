@@ -1,65 +1,65 @@
-let transactions = [];
-let myChart;
+let transactions = []
+let myChart
 
 fetch("/api/transaction")
   .then(response => response.json())
   .then(async data => {
 
     const loading = await loadRecord()
+    
+    
+    transactions = (loading.length === 0)? data : [...loading, ...data]
 
-    transactions = (loading.length === 0)? data
-                 : (!navigator.onLine)? [...loading, ...data]
-                 : (() => {sendBulkTransaction(loading); return data})()
-
-    populateTotal();
-    populateTable();
-    populateChart();
-  });
+    populateTotal()
+    populateTable()
+    populateChart()
+    sendBulkTransaction(loading)
+  })
 
 function populateTotal() {
   // reduce transaction amounts to a single total value
   const total = transactions.reduce((total, {value}) => {
-    return total + parseInt(value);
-  }, 0);
+    return total + parseInt(value)
+  }, 0)
 
-  document.querySelector("#total").textContent = total;
+  document.querySelector("#total").textContent = total
 }
 
 function populateTable() {
-  const tbody = document.querySelector("#tbody");
-  tbody.innerHTML = "";
+  const tbody = document.querySelector("#tbody")
+  tbody.innerHTML = ""
 
   transactions.forEach( ({name,value}) => {
     // create and populate a table row
-    let tr = document.createElement("tr");
+    let tr = document.createElement("tr")
     tr.innerHTML = 
     `<td>${name}</td>
     <td>${value}</td>`
 
-    tbody.appendChild(tr);
-  });
+    tbody.appendChild(tr)
+  })
 }
 
 function populateChart() {
   // copy array and reverse it
-  let reversed = transactions.slice().reverse();
-  let sum = 0;
+  let reversed = transactions.slice().reverse()
+  let sum = 0
 
   // create date labels for chart
   const labels = reversed.map( t => {
-    const date = new Date(t.date);
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-  });
+    const date = new Date(t.date)
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`
+  })
 
   // create incremental values for chart
   const data = reversed.map( ({value}) => {
-    return sum += parseInt(value);
-  });
+    return sum += parseInt(value)
+  })
 
   // remove old chart if it exists
-  if (myChart) myChart.destroy();
+  if (myChart) myChart.destroy()
 
-  const ctx = document.getElementById("myChart").getContext("2d");
+  const ctx = document.getElementById("myChart").getContext("2d")
 
   myChart = new Chart(ctx, {
     type: 'line',
@@ -72,13 +72,13 @@ function populateChart() {
             data
         }]
     }
-  });
+  })
 }
 
 function sendTransaction(isAdding) {
-  const nameEl = document.querySelector("#t-name");
-  const amountEl = document.querySelector("#t-amount");
-  const errorEl = document.querySelector(".form .error");
+  const nameEl = document.querySelector("#t-name")
+  const amountEl = document.querySelector("#t-amount")
+  const errorEl = document.querySelector(".form .error")
 
   // validate form
   const condition = (nameEl.value === "" || amountEl.value === "")
@@ -90,7 +90,7 @@ function sendTransaction(isAdding) {
     name: nameEl.value,
     value: amountEl.value,
     date: new Date().toISOString()
-  };
+  }
 
   // if subtracting funds, convert amount to negative number
   transaction.value *= (isAdding) - (!isAdding)
@@ -100,9 +100,9 @@ function sendTransaction(isAdding) {
   transactions = [transaction,...transactions]
 
   // re-run logic to populate ui with new record
-  populateChart();
-  populateTable();
-  populateTotal();
+  populateChart()
+  populateTable()
+  populateTotal()
   
 
   // also send to server
@@ -116,37 +116,41 @@ function sendTransaction(isAdding) {
   })
   .then(response => response.json())
   .then(({errors}) => {
-    errorEl.textContent = errors? "Missing Information" : "";
-    nameEl.value = errors? null : "";
-    amountEl.value = errors? null : "";
+    errorEl.textContent = errors? "Missing Information" : ""
+    nameEl.value = errors? null : ""
+    amountEl.value = errors? null : ""
   })
   .catch(err => {
     console.log(err)
     // fetch failed, so save in indexed db
-    saveRecord(transaction);
+    saveRecord(transaction)
 
     // clear form
-    nameEl.value = "";
-    amountEl.value = "";
-  });
+    nameEl.value = ""
+    amountEl.value = ""
+  })
 }
 
 // Send all data from IndexedDb to server
-function sendBulkTransaction(loadingRecord){
-  fetch("/api/transaction/bulk", {
+async function sendBulkTransaction(loadingRecord){
+  await fetch("/api/transaction/bulk", {
     method: "POST",
     body: JSON.stringify(loadingRecord),
     headers: {
       Accept: "application/json, text/plain, */*",
       "Content-Type": "application/json"
     }
-  }).then(() => deleteRecord())
+  })
+  .then(() => deleteRecord())
+  .catch(err => {
+    console.log(err)
+  })
 }
 
 document.querySelector("#add-btn").onclick = () => {
-  sendTransaction(true);
-};
+  sendTransaction(true)
+}
 
 document.querySelector("#sub-btn").onclick = () => {
-  sendTransaction(false);
-};
+  sendTransaction(false)
+}
