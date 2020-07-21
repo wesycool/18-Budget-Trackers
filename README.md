@@ -13,7 +13,9 @@ Node.js, Robo 3T, npm install express, morgan, mongoose and compression
 ## Usage
 Run node server.js to run the app.
 
-[![Screenshot](./screenshot.png)]()
+Sample link: https://wesycool-budget-trackers.herokuapp.com/
+
+[![Screenshot](./screenshot.png)](https://wesycool-budget-trackers.herokuapp.com/)
 
 ## License
 MIT License
